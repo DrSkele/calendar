@@ -98,7 +98,6 @@ class _WeeklyCalandarState extends State<WeeklyCalandar> {
     final date = _initialDate
         .add(Duration(days: 7 * (page - _initialPage)))
         .startingSunday();
-    print(date);
     _calandarController.currentDate = date;
   }
 

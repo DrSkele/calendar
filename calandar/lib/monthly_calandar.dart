@@ -69,23 +69,34 @@ class _MonthlyCalandarState extends State<MonthlyCalandar> {
 
   late Widget _indicator;
 
+  bool isMoving = false;
+
   void _dateChangeListener() {
     final targetDate = _calandarController.currentDate;
     final yearDifference = targetDate.year - _initialDate.year;
     final monthDifference =
         (yearDifference * 12) + (targetDate.month - _initialDate.month);
 
+    setState(() {
+      _selectedDate = _calandarController.currentDate;
+    });
+
+    isMoving = true;
     _pageController.animateToPage(
       _initialPage + monthDifference,
       duration: const Duration(milliseconds: 500),
       curve: Curves.fastOutSlowIn,
     );
-
-    setState(() {
-      _selectedDate = _calandarController.currentDate;
-    });
+    isMoving = false;
 
     if (widget.onDateChange != null) widget.onDateChange!(_selectedDate);
+  }
+
+  void _onPageChanged(int page) {
+    if (isMoving) return;
+    final date = DateTime(
+        _initialDate.year, _initialDate.month + (page - _initialPage), 1);
+    _calandarController.currentDate = date;
   }
 
   @override
@@ -127,9 +138,10 @@ class _MonthlyCalandarState extends State<MonthlyCalandar> {
           children: List.generate(
               widget.daysOfWeek.length, (index) => _getDayOfWeek(index)),
         ),
-        Expanded(
+        Flexible(
           child: PageView.builder(
             controller: _pageController,
+            onPageChanged: _onPageChanged,
             itemBuilder: (context, pageIndex) {
               final currentDate = _calandarController.currentDate;
               final daysInMonth =
@@ -149,6 +161,7 @@ class _MonthlyCalandarState extends State<MonthlyCalandar> {
                       startingDate.day + index));
 
               return GridView.count(
+                shrinkWrap: true,
                 crossAxisCount: 7,
                 children: List.generate(daysList.length,
                     (index) => _getDateIndicator(daysList[index])),
