@@ -7,17 +7,18 @@ part of calandar;
 ///[indicatorColor] will be ignored if [indicator] is given.
 ///
 ///[onDateChange] is called when date is selected or changes with [controller].
-class WeeklyCalandar extends StatefulWidget {
-  const WeeklyCalandar({
+class MonthlyCalandar extends StatefulWidget {
+  const MonthlyCalandar({
     super.key,
     this.controller,
-    this.height = 100,
     this.showDaysOfWeek = true,
     this.daysOfWeek = _defaultDayOfWeek,
     this.weekdaysStyle = _defaultWeekdayStyle,
     this.saturdayStyle = _defaultSaturdayStyle,
     this.sundayStyle = _defaultSundayStyle,
     this.dateStyle = _defaultDateStyle,
+    this.saturdayDateColor,
+    this.sundayDateColor,
     this.extraDateStyle = _defaultExtraDateStyle,
     this.selectedDateStyle = _defaultSelectedDateStyle,
     this.indicatorColor = _defaultColor,
@@ -28,17 +29,16 @@ class WeeklyCalandar extends StatefulWidget {
   ///Controller of the WeeklyCalandar
   final CalandarController? controller;
 
-  ///Height of the Calandar
-  ///Default value is 100
-  final double height;
-
   final bool showDaysOfWeek;
   final List<String> daysOfWeek;
+
   final TextStyle weekdaysStyle;
   final TextStyle saturdayStyle;
   final TextStyle sundayStyle;
 
   final TextStyle dateStyle;
+  final Color? saturdayDateColor;
+  final Color? sundayDateColor;
   final TextStyle extraDateStyle;
   final TextStyle selectedDateStyle;
 
@@ -55,10 +55,10 @@ class WeeklyCalandar extends StatefulWidget {
   final Function(DateTime date)? onDateChange;
 
   @override
-  State<WeeklyCalandar> createState() => _WeeklyCalandarState();
+  State<MonthlyCalandar> createState() => _MonthlyCalandarState();
 }
 
-class _WeeklyCalandarState extends State<WeeklyCalandar> {
+class _MonthlyCalandarState extends State<MonthlyCalandar> {
   final int _initialPage = 1040;
 
   late final PageController _pageController;
@@ -69,37 +69,23 @@ class _WeeklyCalandarState extends State<WeeklyCalandar> {
 
   late Widget _indicator;
 
-  bool isMoving = false;
+  void _dateChangeListener() {
+    final targetDate = _calandarController.currentDate;
+    final yearDifference = targetDate.year - _initialDate.year;
+    final monthDifference =
+        (yearDifference * 12) + (targetDate.month - _initialDate.month);
 
-  void _dateChangeListener() async {
-    final referenceWeek = _initialDate.startingSunday();
-    final targetWeek = _calandarController.currentDate.startingSunday();
-    final dateDifference = referenceWeek.difference(targetWeek).inDays;
-    final weekDifference =
-        (dateDifference <= 0 ? dateDifference / 7 : dateDifference.abs() / 7)
-            .toInt();
+    _pageController.animateToPage(
+      _initialPage + monthDifference,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.fastOutSlowIn,
+    );
 
     setState(() {
       _selectedDate = _calandarController.currentDate;
     });
-    isMoving = true;
-    await _pageController.animateToPage(
-      _initialPage - weekDifference,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.fastOutSlowIn,
-    );
-    isMoving = false;
 
     if (widget.onDateChange != null) widget.onDateChange!(_selectedDate);
-  }
-
-  void _onPageChanged(int page) {
-    if (isMoving) return;
-    final date = _initialDate
-        .add(Duration(days: 7 * (page - _initialPage)))
-        .startingSunday();
-    print(date);
-    _calandarController.currentDate = date;
   }
 
   @override
@@ -144,23 +130,28 @@ class _WeeklyCalandarState extends State<WeeklyCalandar> {
         Expanded(
           child: PageView.builder(
             controller: _pageController,
-            onPageChanged: _onPageChanged,
             itemBuilder: (context, pageIndex) {
-              final dateDifference = pageIndex - _initialPage;
-              final referenceDate = (dateDifference == 0)
-                  ? _initialDate
-                  : _initialDate.add(Duration(days: 7 * dateDifference));
-              final dateOfSunday = referenceDate.weekday == DateTime.sunday
-                  ? referenceDate
-                  : referenceDate
-                      .subtract(Duration(days: referenceDate.weekday));
-              final weekDateList = List.generate(
-                  7, (index) => dateOfSunday.add(Duration(days: index)));
+              final currentDate = _calandarController.currentDate;
+              final daysInMonth =
+                  DateUtils.getDaysInMonth(currentDate.year, currentDate.month);
+              final monthStartingDate =
+                  DateTime(currentDate.year, currentDate.month, 1);
+              final monthLastDate =
+                  DateTime(currentDate.year, currentDate.month, daysInMonth);
+              final startingDate = monthStartingDate.startingSunday();
+
+              final additionalDays = monthStartingDate.weekday % 7;
+              final followingDays = 6 - (monthLastDate.weekday % 7);
+
+              final daysList = List.generate(
+                  additionalDays + daysInMonth + followingDays,
+                  (index) => DateTime(startingDate.year, startingDate.month,
+                      startingDate.day + index));
+
               return GridView.count(
-                shrinkWrap: true,
                 crossAxisCount: 7,
-                children: List.generate(weekDateList.length,
-                    (index) => _getDateIndicator(weekDateList[index])),
+                children: List.generate(daysList.length,
+                    (index) => _getDateIndicator(daysList[index])),
               );
             },
           ),
@@ -187,12 +178,23 @@ class _WeeklyCalandarState extends State<WeeklyCalandar> {
   }
 
   Widget _getDateIndicator(DateTime date) {
+    final dateStyle = date.isSameDate(_selectedDate)
+        ? widget.selectedDateStyle
+        : date.isSameMonth(_selectedDate)
+            ? date.weekday == DateTime.sunday && widget.sundayDateColor != null
+                ? widget.dateStyle.copyWith(color: widget.sundayDateColor)
+                : date.weekday == DateTime.saturday &&
+                        widget.saturdayDateColor != null
+                    ? widget.dateStyle.copyWith(color: widget.saturdayDateColor)
+                    : widget.dateStyle
+            : widget.extraDateStyle;
+
     return GestureDetector(
       onTap: () => _selectDate(date),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          (date.day == _selectedDate.day)
+          date.isSameDate(_selectedDate)
               ? Center(child: _indicator)
               : Center(
                   child: Opacity(
@@ -203,11 +205,7 @@ class _WeeklyCalandarState extends State<WeeklyCalandar> {
           Center(
             child: Text(
               date.day.toString(),
-              style: date.isSameDate(_selectedDate)
-                  ? widget.selectedDateStyle
-                  : date.isSameMonth(_selectedDate)
-                      ? widget.dateStyle
-                      : widget.extraDateStyle,
+              style: dateStyle,
             ),
           ),
         ],

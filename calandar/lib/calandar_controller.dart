@@ -38,4 +38,16 @@ class CalandarController extends ChangeNotifier {
         _currentDate.subtract(Duration(days: (_currentDate.weekday % 7) + 1));
     notifyListeners();
   }
+
+  ///Change the [currentDate] to day 1 of the upcoming month.
+  void nextMonth() {
+    _currentDate = DateTime(_currentDate.year, _currentDate.month + 1, 1);
+    notifyListeners();
+  }
+
+  ///Change the [currentDate] to last day of the past month.
+  void previousMonth() {
+    _currentDate = DateTime(_currentDate.year, _currentDate.month - 1, 1);
+    notifyListeners();
+  }
 }
