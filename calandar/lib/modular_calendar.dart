@@ -1,11 +1,10 @@
-library calandar;
+library calendar;
 
-import 'package:calandar/calandar_date_extension.dart';
+import 'calendar_date_extension.dart';
 import 'package:flutter/material.dart';
 
-part 'monthly_calandar.dart';
-part 'weekly_calandar.dart';
-part 'calandar_controller.dart';
+part 'calendar_controller.dart';
+part 'modular_calendar_view.dart';
 
 enum _WeekDay {
   SUN(weekDay: 7),

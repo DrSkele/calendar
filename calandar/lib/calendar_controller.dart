@@ -1,4 +1,4 @@
-part of calandar;
+part of calendar;
 
 ///Controller for the Calandar
 class CalandarController extends ChangeNotifier {

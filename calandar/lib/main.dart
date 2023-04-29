@@ -93,7 +93,7 @@ class _WeekCalandarPageState extends State<WeekCalandarPage> {
         ],
       ),
       body: Center(
-        child: WeeklyCalandar(
+        child: CalendarView.week(
           controller: _controller,
           onDateChange: (date) {
             setState(() {
@@ -152,7 +152,7 @@ class _MonthCalandarPageState extends State<MonthCalandarPage> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: MonthlyCalandar(
+          child: CalendarView.month(
             controller: _controller,
             saturdayDateColor: Colors.blueAccent,
             sundayDateColor: Colors.redAccent,
