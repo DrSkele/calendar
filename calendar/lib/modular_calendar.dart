@@ -4,7 +4,12 @@ import 'calendar_date_extension.dart';
 import 'package:flutter/material.dart';
 
 part 'calendar_controller.dart';
+part 'calendar_decoration.dart';
 part 'modular_calendar_view.dart';
+
+part 'modular_calendar_daysofweek.dart';
+part 'calendar_range_controller.dart';
+part 'modular_calendar_range_picker.dart';
 
 enum _WeekDay {
   SUN(weekDay: 7),
@@ -30,10 +35,3 @@ const List<String> _defaultDayOfWeek = [
   'FRI',
   'SAT'
 ];
-const TextStyle _defaultWeekdayStyle = TextStyle();
-const TextStyle _defaultSaturdayStyle = TextStyle(color: Colors.blueAccent);
-const TextStyle _defaultSundayStyle = TextStyle(color: Colors.redAccent);
-const TextStyle _defaultDateStyle = TextStyle();
-const TextStyle _defaultExtraDateStyle = TextStyle(color: Colors.grey);
-const TextStyle _defaultSelectedDateStyle = TextStyle(color: Colors.white);
-const Color _defaultColor = Colors.redAccent;

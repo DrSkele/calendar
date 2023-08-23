@@ -7,9 +7,13 @@ enum _CalendarType {
 
 ///Creates a view displaying dates.
 ///
+///[CalendarView.month] displays whole month.
+///
+///[CalendarView.week] displays only a week with 7 days.
+///
 ///Date of the calandar can be controlled with [controller].
-///Text representing the date and weekdays can be customized with [dateStyle], [weekdaysStyle], [saturdayStyle] and [sundayStyle].
-///[indicatorColor] will be ignored if [indicator] is given.
+///Text representing the date and weekdays can be customized with [decoration].
+///Selected date is displayed with [indicator].
 ///
 ///[onDateChange] is called when date is selected or changes with [controller].
 class CalendarView extends StatefulWidget {
@@ -18,20 +22,12 @@ class CalendarView extends StatefulWidget {
     this.controller,
     this.showDaysOfWeek = true,
     this.daysOfWeek = _defaultDayOfWeek,
-    this.weekdaysStyle = _defaultWeekdayStyle,
-    this.saturdayStyle = _defaultSaturdayStyle,
-    this.sundayStyle = _defaultSundayStyle,
-    this.dateStyle = _defaultDateStyle,
-    this.saturdayDateColor,
-    this.sundayDateColor,
-    this.extraDateStyle = _defaultExtraDateStyle,
-    this.selectedDateStyle = _defaultSelectedDateStyle,
-    this.indicatorColor = _defaultColor,
-    this.indicator,
+    this.decoration = const CalendarDecoration(),
+    this.indicator = const CalendarIndicator(),
     this.onDateChange,
     this.onDateSelect,
-    this.daysOfWeekAspectRatio = 1,
-    this.dateAspectRatio = 1,
+    this.minDaysOfWeekHieght = 26,
+    this.dateItemMinHeight = 26,
     this.physics,
   }) : type = _CalendarType.month;
 
@@ -40,20 +36,12 @@ class CalendarView extends StatefulWidget {
     this.controller,
     this.showDaysOfWeek = true,
     this.daysOfWeek = _defaultDayOfWeek,
-    this.weekdaysStyle = _defaultWeekdayStyle,
-    this.saturdayStyle = _defaultSaturdayStyle,
-    this.sundayStyle = _defaultSundayStyle,
-    this.dateStyle = _defaultDateStyle,
-    this.saturdayDateColor,
-    this.sundayDateColor,
-    this.extraDateStyle = _defaultExtraDateStyle,
-    this.selectedDateStyle = _defaultSelectedDateStyle,
-    this.indicatorColor = _defaultColor,
-    this.indicator,
+    this.decoration = const CalendarDecoration(),
+    this.indicator = const CalendarIndicator(),
     this.onDateChange,
     this.onDateSelect,
-    this.daysOfWeekAspectRatio = 1,
-    this.dateAspectRatio = 1,
+    this.minDaysOfWeekHieght = 26,
+    this.dateItemMinHeight = 26,
     this.physics,
   }) : type = _CalendarType.week;
 
@@ -65,23 +53,8 @@ class CalendarView extends StatefulWidget {
   final bool showDaysOfWeek;
   final List<String> daysOfWeek;
 
-  final TextStyle weekdaysStyle;
-  final TextStyle saturdayStyle;
-  final TextStyle sundayStyle;
-
-  final TextStyle dateStyle;
-  final Color? saturdayDateColor;
-  final Color? sundayDateColor;
-  final TextStyle extraDateStyle;
-  final TextStyle selectedDateStyle;
-
-  ///Color of the indicator
-  ///Is not applied when [indicator] is not null
-  final Color indicatorColor;
-
-  ///A widget indicating the selected date.
-  ///[indicatorColor] is ignored.
-  final Widget? indicator;
+  final CalendarDecoration decoration;
+  final CalendarIndicator indicator;
 
   ///A callback on date change.
   ///Will be called when a date is selected or changed with [controller].
@@ -91,8 +64,8 @@ class CalendarView extends StatefulWidget {
   ///Will be called when a date is selected.
   final Function(DateTime date)? onDateSelect;
 
-  final double daysOfWeekAspectRatio;
-  final double dateAspectRatio;
+  final double minDaysOfWeekHieght;
+  final double dateItemMinHeight;
 
   final ScrollPhysics? physics;
 
@@ -109,8 +82,6 @@ class _CalendarViewState extends State<CalendarView> {
 
   late final DateTime _initialDate;
   late DateTime _selectedDate;
-
-  late Widget _indicator;
 
   bool isMoving = false;
 
@@ -169,7 +140,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  void _selectDate(DateTime date) {
+  void _onSelectDate(DateTime date) {
     _calandarController.currentDate = date;
     if (widget.onDateSelect != null) widget.onDateSelect!(date);
   }
@@ -184,17 +155,6 @@ class _CalendarViewState extends State<CalendarView> {
     _selectedDate = _initialDate;
     _prevPage = _initialPage;
     _calandarController.addListener(_dateChangeListener);
-
-    //default indicator
-    _indicator = widget.indicator ??
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.indicatorColor,
-          ),
-        );
   }
 
   @override
@@ -208,13 +168,10 @@ class _CalendarViewState extends State<CalendarView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        GridView.count(
-          shrinkWrap: true,
-          crossAxisCount: 7,
-          childAspectRatio: widget.daysOfWeekAspectRatio,
-          physics: const NeverScrollableScrollPhysics(),
-          children: List.generate(
-              widget.daysOfWeek.length, (index) => _getDayOfWeek(index)),
+        DaysOfWeek(
+          daysOfWeek: widget.daysOfWeek,
+          minItemSize: widget.minDaysOfWeekHieght,
+          weekdayStyle: widget.decoration.weekdayStyle,
         ),
         Flexible(
           child: PageView.builder(
@@ -222,34 +179,51 @@ class _CalendarViewState extends State<CalendarView> {
             onPageChanged: _onPageChanged,
             physics: widget.physics,
             itemBuilder: (context, pageIndex) {
-              switch (widget.type) {
-                case _CalendarType.week:
-                  return _getWeeklyDateView(context, pageIndex);
-                case _CalendarType.month:
-                  return _getMontlyDateView(context, pageIndex);
-              }
+              return CalendarDates(
+                type: widget.type,
+                currentDate: _calandarController.currentDate,
+                selectedDate: _selectedDate,
+                style: widget.decoration.dateStyle,
+                indicator: widget.indicator,
+                dateMinHeight: widget.dateItemMinHeight,
+                onDateSelect: _onSelectDate,
+              );
             },
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _getDayOfWeek(int index) {
-    return Center(
-      child: Text(
-        widget.daysOfWeek[index],
-        style: index == 0 //sunday
-            ? widget.sundayStyle
-            : index == 6 //saturday
-                ? widget.saturdayStyle
-                : widget.weekdaysStyle,
-      ),
-    );
-  }
+class CalendarDates extends StatefulWidget {
+  const CalendarDates({
+    super.key,
+    required this.type,
+    required this.currentDate,
+    required this.selectedDate,
+    required this.style,
+    required this.indicator,
+    required this.dateMinHeight,
+    required this.onDateSelect,
+  });
 
-  Widget _getMontlyDateView(BuildContext context, int pageIndex) {
-    final currentDate = _calandarController.currentDate;
+  final _CalendarType type;
+  final DateTime currentDate;
+  final DateTime selectedDate;
+  final DateStyle style;
+  final CalendarIndicator indicator;
+  final double dateMinHeight;
+
+  final Function(DateTime date) onDateSelect;
+
+  @override
+  State<CalendarDates> createState() => _CalendarDatesState();
+}
+
+class _CalendarDatesState extends State<CalendarDates> {
+  List<DateTime> getMontlyDays() {
+    final currentDate = widget.currentDate;
     final daysInMonth =
         DateUtils.getDaysInMonth(currentDate.year, currentDate.month);
     final monthStartingDate = DateTime(currentDate.year, currentDate.month, 1);
@@ -260,72 +234,95 @@ class _CalendarViewState extends State<CalendarView> {
     final additionalDays = monthStartingDate.weekday % 7;
     final followingDays = 6 - (monthLastDate.weekday % 7);
 
-    final daysList = List.generate(
+    return List.generate(
         additionalDays + daysInMonth + followingDays,
         (index) => DateTime(
             startingDate.year, startingDate.month, startingDate.day + index));
-
-    return GridView.count(
-      shrinkWrap: true,
-      crossAxisCount: 7,
-      childAspectRatio: widget.dateAspectRatio,
-      physics: const NeverScrollableScrollPhysics(),
-      children: List.generate(
-          daysList.length, (index) => _getDateIndicator(daysList[index])),
-    );
   }
 
-  Widget _getWeeklyDateView(BuildContext context, int pageIndex) {
-    final dateDifference = pageIndex - _initialPage;
-    final referenceDate = (dateDifference == 0)
-        ? _initialDate
-        : _initialDate.add(Duration(days: 7 * dateDifference));
-    final dateOfSunday = referenceDate.weekday == DateTime.sunday
-        ? referenceDate
-        : referenceDate.subtract(Duration(days: referenceDate.weekday));
-    final weekDateList =
-        List.generate(7, (index) => dateOfSunday.add(Duration(days: index)));
-    return GridView.count(
-      shrinkWrap: true,
-      crossAxisCount: 7,
-      childAspectRatio: widget.dateAspectRatio,
-      children: List.generate(weekDateList.length,
-          (index) => _getDateIndicator(weekDateList[index])),
+  List<DateTime> getWeeklyDays() {
+    final currentDate = widget.currentDate;
+    final dateOfSunday = currentDate.weekday == DateTime.sunday
+        ? currentDate
+        : currentDate.subtract(Duration(days: currentDate.weekday));
+    return List.generate(7, (index) => dateOfSunday.add(Duration(days: index)));
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final days =
+        widget.type == _CalendarType.month ? getMontlyDays() : getWeeklyDays();
+
+    final List<Widget> dates = List.generate(
+      days.length,
+      (index) => _getDateIndicator(days[index]),
+    );
+
+    final List<Widget> weeks = [];
+    for (int i = 0; i < dates.length / 7; i++) {
+      weeks.add(
+        Flexible(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: dates.sublist(i * 7, (i + 1) * 7),
+          ),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: weeks,
     );
   }
 
   Widget _getDateIndicator(DateTime date) {
-    final dateStyle = date.isSameDate(_selectedDate)
-        ? widget.selectedDateStyle
-        : date.isSameMonth(_selectedDate)
-            ? date.weekday == DateTime.sunday && widget.sundayDateColor != null
-                ? widget.dateStyle.copyWith(color: widget.sundayDateColor)
-                : date.weekday == DateTime.saturday &&
-                        widget.saturdayDateColor != null
-                    ? widget.dateStyle.copyWith(color: widget.saturdayDateColor)
-                    : widget.dateStyle
-            : widget.extraDateStyle;
+    final selectedStyle = widget.indicator.selectedDateStyle;
 
-    return GestureDetector(
-      onTap: () => _selectDate(date),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          date.isSameDate(_selectedDate)
-              ? Center(child: _indicator)
-              : Center(
-                  child: Opacity(
-                    opacity: 0,
-                    child: _indicator,
-                  ),
+    final dateStyle = !date.isSameMonth(widget.selectedDate)
+        ? widget.style.extraDateStyle
+        : date.weekday == DateTime.sunday
+            ? widget.style.sundayStyle
+            : date.weekday == DateTime.saturday
+                ? widget.style.saturdayStyle
+                : widget.style.dateStyle;
+
+    final indicator = Container(
+      width: widget.indicator.size.width,
+      height: widget.indicator.size.height,
+      decoration: widget.indicator.decoration,
+    );
+
+    final isSameDate = date.isSameDate(widget.selectedDate);
+
+    return Flexible(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => widget.onDateSelect(date),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: widget.dateMinHeight),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (isSameDate)
+                Center(
+                  child: indicator,
                 ),
-          Center(
-            child: Text(
-              date.day.toString(),
-              style: dateStyle,
-            ),
+              Center(
+                child: Text(
+                  date.day.toString(),
+                  style: isSameDate ? selectedStyle : dateStyle,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
